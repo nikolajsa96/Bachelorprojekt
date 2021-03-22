@@ -1,1 +1,1 @@
-print("Den virke?")
+print("Den virke")

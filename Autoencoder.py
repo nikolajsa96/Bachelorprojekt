@@ -1,40 +1,63 @@
+# import packages
 import os
-import torch as torch
+import torch
+import torchvision
 import torch.nn as nn
+import torchvision.transforms as transforms
 import torch.optim as optim
 import matplotlib.pyplot as plt
 import torch.nn.functional as F
-from sklearn.model_selection import train_test_split
-import pandas as pd
+from torchvision import datasets
 from torch.utils.data import DataLoader
+from torchvision.utils import save_image
 # constants
-NUM_EPOCHS = 50
+
+# constants
+NUM_EPOCHS = 10
 LEARNING_RATE = 1e-3
 BATCH_SIZE = 128
-data_PDF = pd.read_csv("/home/nikolaj/Desktop/Bachelorprojekt/strus/all_PDFs.csv")
+# image transformations
+transform = transforms.Compose([
+    transforms.ToTensor(),
+])
 
-X_train, X_test, y_train, y_test = train_test_split(data_PDF.loc[:, data_PDF.columns != 'true'], data_PDF.iloc[:,-1:], test_size=0.20, random_state=42)
-
-X_train = pd.DataFrame(X_train)
-X_test = pd.DataFrame(X_test)
-
+trainset = datasets.FashionMNIST(
+    root='./data',
+    train=True,
+    download=True,
+    transform=transform
+)
+testset = datasets.FashionMNIST(
+    root='./data',
+    train=False,
+    download=True,
+    transform=transform
+)
 trainloader = DataLoader(
-    X_train,
+    trainset,
     batch_size=BATCH_SIZE,
     shuffle=True
 )
 testloader = DataLoader(
-    X_test,
+    testset,
     batch_size=BATCH_SIZE,
     shuffle=True
 )
 
+# utility functions
 def get_device():
     if torch.cuda.is_available():
         device = 'cuda:0'
     else:
         device = 'cpu'
     return device
+def make_dir():
+    image_dir = 'FashionMNIST_Images'
+    if not os.path.exists(image_dir):
+        os.makedirs(image_dir)
+def save_decoded_image(img, epoch):
+    img = img.view(img.size(0), 1, 28, 28)
+    save_image(img, './FashionMNIST_Images/linear_ae_image{}.png'.format(epoch))
 
 class Autoencoder(nn.Module):
     def __init__(self):
@@ -57,12 +80,13 @@ class Autoencoder(nn.Module):
         x = F.relu(self.enc3(x))
         x = F.relu(self.enc4(x))
         x = F.relu(self.enc5(x))
+        z = x
         x = F.relu(self.dec1(x))
         x = F.relu(self.dec2(x))
         x = F.relu(self.dec3(x))
         x = F.relu(self.dec4(x))
         x = F.relu(self.dec5(x))
-        return x
+        return x, z
 net = Autoencoder()
 print(net)
 
@@ -89,15 +113,27 @@ def train(net, trainloader, NUM_EPOCHS):
         train_loss.append(loss)
         print('Epoch {} of {}, Train Loss: {:.3f}'.format(
             epoch + 1, NUM_EPOCHS, loss))
+        if epoch % 5 == 0:
+            save_decoded_image(outputs.cpu().data, epoch)
     return train_loss
 
 
+def test_image_reconstruction(net, testloader):
+    for batch in testloader:
+        img, _ = batch
+        img = img.to(device)
+        img = img.view(img.size(0), -1)
+        outputs = net(img)
+        outputs = outputs.view(outputs.size(0), 1, 28, 28).cpu().data
+        save_image(outputs, 'fashionmnist_reconstruction.png')
+        break
 
 # get the computation device
 device = get_device()
 print(device)
 # load the neural network onto the device
 net.to(device)
+make_dir()
 # train the network
 train_loss = train(net, trainloader, NUM_EPOCHS)
 plt.figure()
@@ -105,6 +141,8 @@ plt.plot(train_loss)
 plt.title('Train Loss')
 plt.xlabel('Epochs')
 plt.ylabel('Loss')
-#plt.savefig('deep_ae_fashionmnist_loss.png')
+plt.savefig('deep_ae_fashionmnist_loss.png')
 # test the network
-plt.show()
+test_image_reconstruction(net, testloader)
+
+

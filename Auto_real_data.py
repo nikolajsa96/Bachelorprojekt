@@ -16,7 +16,7 @@ from sklearn.model_selection import train_test_split
 #import tensorflow as tf
 
 data_PDF = pd.read_csv("/home/nikolaj/Desktop/Bachelorprojekt/strus/all_PDFs.csv")
-data_PDF =data_PDF.drop(['true'], axis=1)
+data_PDF = data_PDF.drop(['true'], axis=1)
 data_PDF = data_PDF.sample(frac=1).reset_index(drop=True)
 torch_tensor = torch.tensor(data_PDF.values)
 DATASET_SIZE = torch_tensor.size(0)
@@ -25,7 +25,7 @@ train_size = int(0.7 * DATASET_SIZE)
 #val_size = int(0.15 * DATASET_SIZE)
 test_size = int(DATASET_SIZE-train_size)
 
-data = torch.split(torch_tensor,[train_size,test_size])
+data = torch.split(torch_tensor, [train_size, test_size])
 train_dataset = data[0].float()
 test_dataset = data[1].float()
 
@@ -85,17 +85,23 @@ class Autoencoder(nn.Module):
         self.enc8 = nn.Linear(in_features=80, out_features=50)
         self.enc9 = nn.Linear(in_features=50, out_features=30)
         self.enc10 = nn.Linear(in_features=30, out_features=15)
+        #self.enc11 = nn.Linear(in_features=15, out_features=10)
+        #self.enc12 = nn.Linear(in_features=10, out_features=4)
+        #self.enc13 = nn.Linear(in_features=4, out_features=2)
         # decoder
-        self.dec1 = nn.Linear(in_features=15, out_features=30)
-        self.dec2 = nn.Linear(in_features=30, out_features=50)
-        self.dec3 = nn.Linear(in_features=50, out_features=80)
-        self.dec4 = nn.Linear(in_features=80, out_features=100)
-        self.dec5 = nn.Linear(in_features=100, out_features=130)
-        self.dec6 = nn.Linear(in_features=130, out_features=150)
-        self.dec7 = nn.Linear(in_features=150, out_features=180)
-        self.dec8 = nn.Linear(in_features=180, out_features=200)
-        self.dec9 = nn.Linear(in_features=200, out_features=250)
-        self.dec10 = nn.Linear(in_features=250, out_features=300)
+        #self.dec1 = nn.Linear(in_features=2, out_features=4)
+        #self.dec2 = nn.Linear(in_features=4, out_features=10)
+        #self.dec3 = nn.Linear(in_features=10, out_features=15)
+        self.dec4 = nn.Linear(in_features=15, out_features=30)
+        self.dec5 = nn.Linear(in_features=30, out_features=50)
+        self.dec6 = nn.Linear(in_features=50, out_features=80)
+        self.dec7 = nn.Linear(in_features=80, out_features=100)
+        self.dec8 = nn.Linear(in_features=100, out_features=130)
+        self.dec9 = nn.Linear(in_features=130, out_features=150)
+        self.dec10 = nn.Linear(in_features=150, out_features=180)
+        self.dec11 = nn.Linear(in_features=180, out_features=200)
+        self.dec12 = nn.Linear(in_features=200, out_features=250)
+        self.dec13 = nn.Linear(in_features=250, out_features=300)
     def forward(self, x):
         x = F.relu(self.enc1(x))
         x = F.relu(self.enc2(x))
@@ -107,10 +113,13 @@ class Autoencoder(nn.Module):
         x = F.relu(self.enc8(x))
         x = F.relu(self.enc9(x))
         x = F.relu(self.enc10(x))
-        z = x
-        x = F.relu(self.dec1(x))
-        x = F.relu(self.dec2(x))
-        x = F.relu(self.dec3(x))
+        #x = F.relu(self.enc11(x))
+        #x = F.relu(self.enc12(x))
+        #x = F.relu(self.enc13(x))
+        z = x.clone()
+        #x = F.relu(self.dec1(x))
+        #x = F.relu(self.dec2(x))
+        #x = F.relu(self.dec3(x))
         x = F.relu(self.dec4(x))
         x = F.relu(self.dec5(x))
         x = F.relu(self.dec6(x))
@@ -118,6 +127,9 @@ class Autoencoder(nn.Module):
         x = F.relu(self.dec8(x))
         x = F.relu(self.dec9(x))
         x = F.relu(self.dec10(x))
+        x = F.relu(self.dec11(x))
+        x = F.relu(self.dec12(x))
+        x = F.relu(self.dec13(x))
         return x, z
 net = Autoencoder()
 print(net)
@@ -134,7 +146,7 @@ def train(net, trainloader, NUM_EPOCHS):
         for data in trainloader:
             img = data
             img = img.to(device)
-            img = img.view(img.size(0), -1)
+            #img = img.view(img.size(0), -1)
             optimizer.zero_grad()
             outputs = net(img)
             dimi = outputs[1]
@@ -182,9 +194,9 @@ plt.savefig('deep_ae_fashionmnist_loss.png')
 # test the network
 #test_image_reconstruction(net, testloader)
 #print(train_loss[1].shape())
-pre_ind = train_loss[2]
+pre_indcode = train_loss[2]
 
-pre_ind = pre_ind.data
+pre_ind = pre_indcode.data
 plt.figure()
 plt.plot(testset[0])
 plt.plot(pre_ind[0])
@@ -192,11 +204,3 @@ plt.plot(pre_ind[0])
 plt.show()
 
 
-"""
-plt.figure()
-plt.plot(z_list)
-plt.title('2D Boii')
-#plt.xlabel('Epochs')
-#plt.ylabel('Loss')
-plt.savefig('2D_Boii.png')
-"""

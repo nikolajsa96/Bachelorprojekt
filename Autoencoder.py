@@ -12,7 +12,7 @@ from torch.utils.data import DataLoader
 from torchvision.utils import save_image
 
 # constants
-NUM_EPOCHS = 10
+NUM_EPOCHS = 50
 LEARNING_RATE = 1e-3
 BATCH_SIZE = 128
 # image transformations

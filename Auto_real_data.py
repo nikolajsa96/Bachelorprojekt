@@ -28,9 +28,9 @@ test_size = int(DATASET_SIZE-train_size)
 data = torch.split(torch_tensor, [train_size, test_size])
 train_dataset = data[0].float()
 test_dataset = data[1].float()
-
+print(len(train_dataset))
 # constants
-NUM_EPOCHS = 500
+NUM_EPOCHS = 6
 LEARNING_RATE = 1e-3
 BATCH_SIZE = 128
 
@@ -46,6 +46,7 @@ trainloader = DataLoader(
     batch_size=BATCH_SIZE,
     shuffle=False
 )
+print(len(trainloader.dataset))
 testloader = DataLoader(
     testset,
     batch_size=BATCH_SIZE,
@@ -64,11 +65,15 @@ def make_dir():
     if not os.path.exists(pdf_dir):
         os.makedirs(pdf_dir)
       
-def save_decoded_pdf(outputs, epoch):
+def save_dimi_pdf(dimi, epoch):
     #img = img.view(img.size(0), img.size(1))
     plt.figure()
-    plt.plot(outputs)
-    plt.savefig('./FashionMNIST_Images/linear_ae_image{}.png'.format(epoch))
+    dimi = dimi.cpu().detach().numpy()
+    dimi_len =len(dimi)
+    df = pd.DataFrame(dimi, columns=['den_x', 'den_y'])
+    df.plot.scatter(x='den_x', y='den_y')
+    plt.title(dimi_len)
+    plt.savefig('./Auto_real_data/linear_ae_image{}.png'.format(epoch))
 
 
 class Autoencoder(nn.Module):
@@ -103,33 +108,33 @@ class Autoencoder(nn.Module):
         self.dec12 = nn.Linear(in_features=200, out_features=250)
         self.dec13 = nn.Linear(in_features=250, out_features=300)
     def forward(self, x):
-        x = F.sigmoid(self.enc1(x))
-        x = F.sigmoid(self.enc2(x))
-        x = F.sigmoid(self.enc3(x))
-        x = F.sigmoid(self.enc4(x))
-        x = F.sigmoid(self.enc5(x))
-        x = F.sigmoid(self.enc6(x))
-        x = F.sigmoid(self.enc7(x))
-        x = F.sigmoid(self.enc8(x))
-        x = F.sigmoid(self.enc9(x))
-        x = F.sigmoid(self.enc10(x))
-        x = F.sigmoid(self.enc11(x))
-        x = F.sigmoid(self.enc12(x))
-        x = F.sigmoid(self.enc13(x))
+        x = torch.sigmoid(self.enc1(x))
+        x = torch.sigmoid(self.enc2(x))
+        x = torch.sigmoid(self.enc3(x))
+        x = torch.sigmoid(self.enc4(x))
+        x = torch.sigmoid(self.enc5(x))
+        x = torch.sigmoid(self.enc6(x))
+        x = torch.sigmoid(self.enc7(x))
+        x = torch.sigmoid(self.enc8(x))
+        x = torch.sigmoid(self.enc9(x))
+        x = torch.sigmoid(self.enc10(x))
+        x = torch.sigmoid(self.enc11(x))
+        x = torch.sigmoid(self.enc12(x))
+        x = torch.sigmoid(self.enc13(x))
         z = x.clone()
-        x = F.sigmoid(self.dec1(x))
-        x = F.sigmoid(self.dec2(x))
-        x = F.sigmoid(self.dec3(x))
-        x = F.sigmoid(self.dec4(x))
-        x = F.sigmoid(self.dec5(x))
-        x = F.sigmoid(self.dec6(x))
-        x = F.sigmoid(self.dec7(x))
-        x = F.sigmoid(self.dec8(x))
-        x = F.sigmoid(self.dec9(x))
-        x = F.sigmoid(self.dec10(x))
-        x = F.sigmoid(self.dec11(x))
-        x = F.sigmoid(self.dec12(x))
-        x = F.sigmoid(self.dec13(x))
+        x = torch.sigmoid(self.dec1(x))
+        x = torch.sigmoid(self.dec2(x))
+        x = torch.sigmoid(self.dec3(x))
+        x = torch.sigmoid(self.dec4(x))
+        x = torch.sigmoid(self.dec5(x))
+        x = torch.sigmoid(self.dec6(x))
+        x = torch.sigmoid(self.dec7(x))
+        x = torch.sigmoid(self.dec8(x))
+        x = torch.sigmoid(self.dec9(x))
+        x = torch.sigmoid(self.dec10(x))
+        x = torch.sigmoid(self.dec11(x))
+        x = torch.sigmoid(self.dec12(x))
+        x = torch.sigmoid(self.dec13(x))
         return x, z
 net = Autoencoder()
 print(net)
@@ -140,7 +145,6 @@ optimizer = optim.Adam(net.parameters(), lr=LEARNING_RATE)
 
 def train(net, trainloader, NUM_EPOCHS):
     train_loss = []
-    dimi_list = []
     for epoch in range(NUM_EPOCHS):
         running_loss = 0.0
         for data in trainloader:
@@ -158,12 +162,11 @@ def train(net, trainloader, NUM_EPOCHS):
 
         loss = running_loss / len(trainloader)
         train_loss.append(loss)
-        dimi_list.append(dimi)
         print('Epoch {} of {}, Train Loss: {:.3f}'.format(
             epoch + 1, NUM_EPOCHS, loss))
-        #if epoch % 5 == 0:
-            #save_decoded_pdf(outputs.cpu().data, epoch)
-    return train_loss, dimi_list, outputs
+        if epoch % 5 == 0:
+            save_dimi_pdf(dimi.cpu().data, epoch)
+    return train_loss, dimi, outputs
 
 
 def test_image_reconstruction(net, testloader):
@@ -195,12 +198,12 @@ plt.savefig('deep_ae_fashionmnist_loss.png')
 #test_image_reconstruction(net, testloader)
 #print(train_loss[1].shape())
 pre_indcode = train_loss[2]
-
 pre_ind = pre_indcode.data
 plt.figure()
 plt.plot(testset[0])
 plt.plot(pre_ind[0])
+plt.savefig('sammeli.png')
+#plt.show()
 
-plt.show()
-
+print(train_loss[2])
 

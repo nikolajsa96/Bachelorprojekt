@@ -12,7 +12,7 @@ from torch.utils.data import DataLoader
 from torchvision.utils import save_image
 
 # constants
-NUM_EPOCHS = 50
+NUM_EPOCHS = 6
 LEARNING_RATE = 1e-3
 BATCH_SIZE = 128
 # image transformations
@@ -37,6 +37,7 @@ trainloader = DataLoader(
     batch_size=BATCH_SIZE,
     shuffle=True
 )
+print(len(trainloader.dataset))
 testloader = DataLoader(
     testset,
     batch_size=BATCH_SIZE,
@@ -136,7 +137,7 @@ def train(net, trainloader, NUM_EPOCHS):
             epoch + 1, NUM_EPOCHS, loss))
         if epoch % 5 == 0:
             save_decoded_image(outputs.cpu().data, epoch)
-    return train_loss, dimi_list
+    return train_loss, dimi_list, outputs
 
 
 def test_image_reconstruction(net, testloader):
@@ -166,13 +167,8 @@ plt.ylabel('Loss')
 plt.savefig('deep_ae_fashionmnist_loss.png')
 # test the network
 test_image_reconstruction(net, testloader)
-print(train_loss[1])
+print(train_loss[2].size())
+print(len(train_loss[2]))
 
-"""
-plt.figure()
-plt.plot(z_list)
-plt.title('2D Boii')
-#plt.xlabel('Epochs')
-#plt.ylabel('Loss')
-plt.savefig('2D_Boii.png')
-"""
+
+

@@ -30,7 +30,7 @@ train_dataset = data[0].float()
 test_dataset = data[1].float()
 print(len(train_dataset))
 # constants
-NUM_EPOCHS = 6
+NUM_EPOCHS = 51
 LEARNING_RATE = 1e-3
 BATCH_SIZE = 128
 
@@ -177,7 +177,7 @@ def test_image_reconstruction(net, testloader):
         outputs = net(img)
         outputs = outputs[0]
         outputs = outputs.view(outputs.size(0), 1, 28, 28).cpu().data
-        save_image(outputs, 'fashionmnist_reconstruction.png')
+        save_image(outputs, 'real_reconstruction.png')
         break
 
 # get the computation device
@@ -193,7 +193,7 @@ plt.plot(train_loss[0])
 plt.title('Train Loss')
 plt.xlabel('Epochs')
 plt.ylabel('Loss')
-plt.savefig('deep_ae_fashionmnist_loss.png')
+plt.savefig('deep_ae_real_loss.png')
 # test the network
 #test_image_reconstruction(net, testloader)
 #print(train_loss[1].shape())

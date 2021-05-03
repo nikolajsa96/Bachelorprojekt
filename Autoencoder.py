@@ -10,9 +10,10 @@ import torch.nn.functional as F
 from torchvision import datasets
 from torch.utils.data import DataLoader
 from torchvision.utils import save_image
+import pandas as pd
 
 # constants
-NUM_EPOCHS = 6
+NUM_EPOCHS = 51
 LEARNING_RATE = 1e-3
 BATCH_SIZE = 128
 # image transformations
@@ -59,6 +60,16 @@ def save_decoded_image(img, epoch):
     img = img.view(img.size(0), 1, 28, 28)
     save_image(img, './FashionMNIST_Images/linear_ae_image{}.png'.format(epoch))
 
+def save_dimi_pdf(dimi, epoch):
+    #img = img.view(img.size(0), img.size(1))
+    plt.figure()
+    dimi = dimi.cpu().detach().numpy()
+    dimi_len =len(dimi)
+    df = pd.DataFrame(dimi, columns=['den_x', 'den_y'])
+    df.plot.scatter(x='den_x', y='den_y')
+    plt.title(dimi_len)
+    plt.savefig('./FashionMNIST_Images/den_rum{}.png'.format(epoch))
+
 class Autoencoder(nn.Module):
     def __init__(self):
         super(Autoencoder, self).__init__()
@@ -93,7 +104,7 @@ class Autoencoder(nn.Module):
         x = F.relu(self.enc7(x))
         x = F.relu(self.enc8(x))
 
-        z = x
+        z = x.clone()
 
         x = F.relu(self.dec1(x))
         x = F.relu(self.dec2(x))
@@ -114,7 +125,6 @@ optimizer = optim.Adam(net.parameters(), lr=LEARNING_RATE)
 
 def train(net, trainloader, NUM_EPOCHS):
     train_loss = []
-    dimi_list = []
     for epoch in range(NUM_EPOCHS):
         running_loss = 0.0
         for data in trainloader:
@@ -123,8 +133,8 @@ def train(net, trainloader, NUM_EPOCHS):
             img = img.view(img.size(0), -1)
             optimizer.zero_grad()
             outputs = net(img)
-            outputs = outputs[0]
             dimi = outputs[1]
+            outputs = outputs[0]
             loss = criterion(outputs, img)
             loss.backward()
             optimizer.step()
@@ -132,12 +142,12 @@ def train(net, trainloader, NUM_EPOCHS):
 
         loss = running_loss / len(trainloader)
         train_loss.append(loss)
-        dimi_list.append(dimi)
         print('Epoch {} of {}, Train Loss: {:.3f}'.format(
             epoch + 1, NUM_EPOCHS, loss))
         if epoch % 5 == 0:
             save_decoded_image(outputs.cpu().data, epoch)
-    return train_loss, dimi_list, outputs
+            save_dimi_pdf(dimi.cpu().data, epoch)
+    return train_loss, dimi, outputs
 
 
 def test_image_reconstruction(net, testloader):
@@ -167,8 +177,7 @@ plt.ylabel('Loss')
 plt.savefig('deep_ae_fashionmnist_loss.png')
 # test the network
 test_image_reconstruction(net, testloader)
-print(train_loss[2].size())
-print(len(train_loss[2]))
+
 
 
 

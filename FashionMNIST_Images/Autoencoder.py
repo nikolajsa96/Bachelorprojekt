@@ -53,7 +53,7 @@ def get_device():
         device = 'cpu'
     return device
 def make_dir():
-    image_dir = 'FashionMNIST_Images'
+    image_dir = ''
     if not os.path.exists(image_dir):
         os.makedirs(image_dir)
 def save_decoded_image(img, epoch):

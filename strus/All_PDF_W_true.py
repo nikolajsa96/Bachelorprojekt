@@ -19,17 +19,16 @@ for i in stru_maker_list:
         if __name__ == '__main__':
             PDF = pd.read_csv(str(path_PDF) + filename)
             r, Gr = PDF['0'], PDF['1']
-            Gr -= np.min(Gr) * 2
-            Gr /= np.max(Gr)
+            Gr = (Gr - np.min(Gr)) / (np.max(Gr) - np.min(Gr))
             PDF_list.append(Gr)
         PDF_array = np.array(PDF_list)
         pbar.update(1)
     pbar.close()
 
 
-true = np.genfromtxt('/home/nikolaj/Desktop/Bachelorprojekt/stru_true_list.txt', delimiter=',', dtype=str)
+true = np.genfromtxt('/home/nikolaj/Desktop/Bachelorprojekt/strus/stru_true_list.txt', delimiter=',', dtype=str)
 all_PDF = pd.DataFrame(PDF_array)
-all_PDF['true']= true
+all_PDF['true'] = true
 
 path = (r'/home/nikolaj/Desktop/Bachelorprojekt/strus/' + 'all_PDFs.csv')
 all_PDF.to_csv(path, index=False)

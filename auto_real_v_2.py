@@ -1,5 +1,7 @@
 # import packages
 import os
+import sys
+
 import torch
 import torchvision
 import torch.nn as nn
@@ -32,9 +34,9 @@ test_dataset = data[1].float()
 
 #print(len(train_dataset))
 # constants
-NUM_EPOCHS = 151
+NUM_EPOCHS = 11
 LEARNING_RATE = 1e-3
-BATCH_SIZE = len(train_dataset)
+BATCH_SIZE = 16
 
 # image transformations
 transform = transforms.Compose([
@@ -49,6 +51,7 @@ trainloader = DataLoader(
     batch_size=BATCH_SIZE,
     shuffle=False
 )
+
 #print(len(trainloader.dataset))
 testloader = DataLoader(
     testset,
@@ -103,7 +106,7 @@ class encoder(nn.Module):
         x = (self.enc6(x))
         x = (self.enc7(x))
         x = (self.enc8(x))
-        x = torch.sigmoid(self.enc9(x))
+        x = (self.enc9(x))
         x = (self.enc10(x))
         return x
 
@@ -142,25 +145,28 @@ de = decoder()
 
 criterion = nn.MSELoss()
 optimizer_end = optim.Adam(end.parameters(), lr=LEARNING_RATE)
-optimizer_de = optim.Adam(de.parameters(), lr=LEARNING_RATE)
+#optimizer_de = optim.Adam(de.parameters(), lr=LEARNING_RATE)
 
 def train(end, de, trainloader, NUM_EPOCHS=NUM_EPOCHS):
     train_loss = []
     for epoch in range(NUM_EPOCHS):
         running_loss = 0.0
-        for data in trainloader:
+        for iter, data in enumerate(trainloader):
+            print(data.size())
+            print(iter)
             img = data
             img = img.to(device)
             img = img.view(img.size(0), -1)
+            print(img.size())
             optimizer_end.zero_grad()
-            optimizer_de.zero_grad()
+            #optimizer_de.zero_grad()
             outputs = end(img)
             dimi = outputs
             outputs = de(outputs)
             loss = criterion(outputs, img)
             loss.backward()
             optimizer_end.step()
-            optimizer_de.step()
+            #optimizer_de.step()
             running_loss += loss.item()
 
         loss = running_loss / len(trainloader)

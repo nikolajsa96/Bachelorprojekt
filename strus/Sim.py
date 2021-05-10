@@ -80,7 +80,7 @@ class PDF_generator:
                                         .format(self.qmin, self.qmax, self.qdamp, self.rmin,
                                                 self.rmax, self.rstep, self.biso, self.delta2)
 stru_true_list = []
-
+size_list = []
 stru_maker_list = ["FCC", "BCC", "SC", "HCP", "Icosahedron", "Decahedron", "Octahedron"]
 for i in stru_maker_list:
     dir = '/home/nikolaj/Desktop/Bachelorprojekt/strus/' + i + '/PDF/'
@@ -93,6 +93,8 @@ for i in stru_maker_list:
     pbar = tqdm(total=len(path_tmp_xyz))
 
     for filename in path_tmp_xyz:
+        with open(path_xyz + filename) as f:
+            first_line = int(f.readline())
         if __name__ == '__main__':
             PDF_obj = PDF_generator()  # Init class object
             # Using cluster files
@@ -107,10 +109,11 @@ for i in stru_maker_list:
             txt = os.path.splitext(base)[0]
             x = txt.split("_")
             stru_true_list.append(x[0])
+            size_list.append((first_line))
         pbar.update(1)
     pbar.close()
 np.savetxt("stru_true_list.txt", stru_true_list, fmt='%.3s', delimiter=',')
-
+np.savetxt("size_list.txt", size_list, delimiter=',')
 """
 
 os.makedirs("/home/nikolaj/Desktop/Bachelorprojekt/strus/FCC/PDF/",exist_ok=True)

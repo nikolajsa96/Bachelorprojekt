@@ -1,7 +1,8 @@
 # import packages
 import os
 import sys
-
+from matplotlib.colors import LinearSegmentedColormap
+import matplotlib as mpl
 import torch
 import torchvision
 import torch.nn as nn
@@ -14,38 +15,65 @@ from torchvision import datasets
 from torch.utils.data import DataLoader
 from torchvision.utils import save_image
 import pandas as pd
+import torch.optim as optim
+from torch.distributions import Normal, Independent
+from ase.data import covalent_radii, atomic_numbers, chemical_symbols
+import matplotlib.cm as cm
+from sklearn.manifold import TSNE
+import umap
 
-new_path = 'Auto_real_data_dec_oct'
-data_PDF = pd.read_csv("/home/nikolaj/Desktop/Bachelorprojekt/Sigsig_data/dec_oct.csv")
-
-data_PDF = data_PDF.drop(['true'], axis=1)
+os.makedirs('/home/nikolaj/Desktop/Bachelorprojekt/pdf_normsammen/train', exist_ok=True)
+os.makedirs('/home/nikolaj/Desktop/Bachelorprojekt/pdf_normsammen/test', exist_ok=True)
+new_path = 'pdf_normsammen/train'
+test_path = 'pdf_normsammen/test'
+data_PDF = pd.read_csv("/home/nikolaj/Desktop/Bachelorprojekt/pdf_normsammen/all.csv")
 data_PDF = data_PDF.sample(frac=1).reset_index(drop=True)
+size = data_PDF["size"]
+stru = data_PDF["stru"]
+data_PDF = data_PDF.drop(['stru'], axis=1)
+data_PDF = data_PDF.drop(['size'], axis=1)
 torch_tensor = torch.tensor(data_PDF.values)
 DATASET_SIZE = torch_tensor.size(0)
 
-train_size = int(0.7 * DATASET_SIZE)
-#val_size = int(0.15 * DATASET_SIZE)
-test_size = int(DATASET_SIZE-train_size)
+train_size = int(0.8 * DATASET_SIZE)
+val_size = int(0.1*DATASET_SIZE)
+test_size = int(0.1*DATASET_SIZE)
 
-data = torch.split(torch_tensor, [train_size, test_size])
+data = torch.split(torch_tensor, [train_size, test_size, val_size])
 train_dataset = data[0].float()
 test_dataset = data[1].float()
+val_dataset = data[2].float()
 
+size_train = size.iloc(axis=0)[:train_size]
+size_test = size.iloc(axis=0)[test_size:]
+size_val = size.iloc(axis=0)[val_size:]
 
-#print(len(train_dataset))
+stru_train = stru.iloc(axis=0)[:train_size]
+stru_test = stru.iloc(axis=0)[test_size:]
+stru_val = stru.iloc(axis=0)[val_size:]
+
+#print(len(train_dataset))size_spilt
 # constants
-NUM_EPOCHS = 11
+NUM_EPOCHS = 151
 LEARNING_RATE = 1e-3
-BATCH_SIZE = 16
+BATCH_SIZE = 242
 
-# image transformations
-transform = transforms.Compose([
-    transforms.ToTensor(),
-])
+size_loader = DataLoader(
+    size_train,
+    batch_size=BATCH_SIZE,
+    shuffle=False
+)
+
+stru_loader = DataLoader(
+    stru_train,
+    batch_size=BATCH_SIZE,
+    shuffle=False
+)
 
 trainset = train_dataset
 testset = test_dataset
-print(len(trainset))
+valset = val_dataset
+
 trainloader = DataLoader(
     trainset,
     batch_size=BATCH_SIZE,
@@ -59,6 +87,15 @@ testloader = DataLoader(
     shuffle=False
 )
 
+valloader = DataLoader(
+    valset,
+    batch_size=BATCH_SIZE,
+    shuffle=False
+)
+
+data_loaders = {"train": trainloader, "val": valloader}
+data_lengths = {"train": len(trainloader.dataset), "val": len(valloader.dataset)}
+
 # utility functions
 def get_device():
     if torch.cuda.is_available():
@@ -70,44 +107,91 @@ def make_dir():
     pdf_dir = new_path
     if not os.path.exists(pdf_dir):
         os.makedirs(pdf_dir)
-def save_dimi(dimi, epoch):
-    plt.figure()
+
+def update_annot(ind):
+
+    pos = sc.get_offsets()[ind["ind"][0]]
+    annot.xy = pos
+    text = "{}, {}".format(" ".join(list(map(str,ind["ind"]))),
+                           " ".join([names[n] for n in ind["ind"]]))
+    annot.set_text(text)
+    annot.get_bbox_patch().set_facecolor(cmap(norm(c[ind["ind"][0]])))
+    annot.get_bbox_patch().set_alpha(0.4)
+
+def hover(event):
+    vis = annot.get_visible()
+    if event.inaxes == ax:
+        cont, ind = sc.contains(event)
+        if cont:
+            update_annot(ind)
+            annot.set_visible(True)
+            fig.canvas.draw_idle()
+        else:
+            if vis:
+                annot.set_visible(False)
+                fig.canvas.draw_idle()
+                
+def save_dimi(dimi, epoch, size, stru):
     dimi = dimi.cpu().detach().numpy()
-    dimi_len =len(dimi)
-    df = pd.DataFrame(dimi, columns=['den_x', 'den_y'])
-    df.plot.scatter(x='den_x', y='den_y')
-    #plt.xlim(np.min(df['den_x']), np.max(df['den_x']))
-    #plt.ylim(np.min(df['den_y']), np.max(df['den_y']))
-    plt.title(dimi_len)
-    plt.savefig("./" + new_path + '/dimi_image{}.png'.format(epoch))
+    norm = plt.Normalize(1, 4)
+    c = np.array(size) / 100
+    names = stru
+
+    #for i in range(len(stru)):
+        #names.append(stru[i][:stru[i].find("_")] + "-" + str(
+            #int(stru.tolist()[i])))
+ 
+    cmap = plt.cm.viridis
+    cmaplist = [cmap(i) for i in range(cmap.N)]
+    cmap = mpl.colors.LinearSegmentedColormap.from_list("Custom cmap", cmaplist, cmap.N)
+    fig, ax = plt.subplots(figsize=(5, 8))
+    sc = ax.scatter(dimi[:,0], dimi[:,1], c=c, cmap=cmap, s=80)
+    plt.title("Latent Space for epoch{}".format(epoch))
+    plt.xlabel("Latent Space Variable 1")
+    plt.ylabel("Latent Space Variable 2")
+    plt.yticks([])
+    plt.xticks([])
+    right_side = ax.spines["right"]
+    right_side.set_visible(False)
+    top = ax.spines["top"]
+    top.set_visible(False)
+    #plt.legend()
+    plt.tight_layout()
+
+    annot = ax.annotate("", xy=(0, 0), xytext=(20, 20), textcoords="offset points",
+                        bbox=dict(boxstyle="round", fc="w"),
+                        arrowprops=dict(arrowstyle="->"))
+    # loop through each x,y pair
+    for iter, (i, j) in enumerate(zip(dimi[:,0], dimi[:,1])):
+        ax.annotate(stru[iter][:3], xy=(i, j), color='black',
+                    fontsize="x-small", weight='heavy',
+                    horizontalalignment='center',
+                    verticalalignment='center')
+
+    annot.set_visible(False)
+    fig.canvas.mpl_connect("motion_notify_event", hover)
+    plt.savefig("./" + new_path + '/nice_plot{}.png'.format(epoch), dpi=600)
 
 #encoder
-
 class encoder(nn.Module):
     def __init__(self):
         super(encoder, self).__init__()
         # encoder
-        self.enc1 = nn.Linear(in_features=3001, out_features=1500)
-        self.enc2 = nn.Linear(in_features=1500, out_features=800)
-        self.enc3 = nn.Linear(in_features=800, out_features=400)
-        self.enc4 = nn.Linear(in_features=400, out_features=200)
-        self.enc5 = nn.Linear(in_features=200, out_features=100)
-        self.enc6 = nn.Linear(in_features=100, out_features=50)
-        self.enc7 = nn.Linear(in_features=50, out_features=20)
-        self.enc8 = nn.Linear(in_features=20, out_features=10)
-        self.enc9 = nn.Linear(in_features=10, out_features=5)
-        self.enc10 = nn.Linear(in_features=5, out_features=2)
+        self.enc1 = nn.Linear(in_features=301, out_features=150)
+        self.enc2 = nn.Linear(in_features=150, out_features=80)
+        self.enc3 = nn.Linear(in_features=80, out_features=40)
+        self.enc4 = nn.Linear(in_features=40, out_features=20)
+        self.enc5 = nn.Linear(in_features=20, out_features=10)
+        self.enc6 = nn.Linear(in_features=10, out_features=5)
+        self.enc7 = nn.Linear(in_features=5, out_features=2)
     def forward(self, x):
         x = (self.enc1(x))
         x = (self.enc2(x))
         x = (self.enc3(x))
         x = (self.enc4(x))
-        x = (self.enc5(x))
+        x = F.relu(self.enc5(x))
         x = (self.enc6(x))
         x = (self.enc7(x))
-        x = (self.enc8(x))
-        x = (self.enc9(x))
-        x = (self.enc10(x))
         return x
 
 #decoder
@@ -117,75 +201,86 @@ class decoder(nn.Module):
         self.dec1 = nn.Linear(in_features=2, out_features=5)
         self.dec2 = nn.Linear(in_features=5, out_features=10)
         self.dec3 = nn.Linear(in_features=10, out_features=20)
-        self.dec4 = nn.Linear(in_features=20, out_features=50)
-        self.dec5 = nn.Linear(in_features=50, out_features=100)
-        self.dec6 = nn.Linear(in_features=100, out_features=200)
-        self.dec7 = nn.Linear(in_features=200, out_features=400)
-        self.dec8 = nn.Linear(in_features=400, out_features=800)
-        self.dec9 = nn.Linear(in_features=800, out_features=1200)
-        self.dec10 = nn.Linear(in_features=1200, out_features=1500)
-        self.dec11 = nn.Linear(in_features=1500, out_features=3001)
+        self.dec4 = nn.Linear(in_features=20, out_features=40)
+        self.dec5 = nn.Linear(in_features=40, out_features=80)
+        self.dec6 = nn.Linear(in_features=80, out_features=120)
+        self.dec7 = nn.Linear(in_features=120, out_features=150)
+        self.dec8 = nn.Linear(in_features=150, out_features=301)
 
     def forward(self, x):
         x = F.relu(self.dec1(x))
         x = (self.dec2(x))
         x = (self.dec3(x))
-        x = F.relu(self.dec4(x))
+        x = (self.dec4(x))
         x = (self.dec5(x))
         x = (self.dec6(x))
         x = torch.sigmoid(self.dec7(x))
         x = (self.dec8(x))
-        x = (self.dec9(x))
-        x = torch.sigmoid(self.dec10(x))
-        x = (self.dec11(x))
         return x
 
 end = encoder()
 de = decoder()
 
 criterion = nn.MSELoss()
-optimizer_end = optim.Adam(end.parameters(), lr=LEARNING_RATE)
-#optimizer_de = optim.Adam(de.parameters(), lr=LEARNING_RATE)
+#optimizer_end = optim.Adam(end.parameters(), lr=LEARNING_RATE)
 
-def train(end, de, trainloader, NUM_EPOCHS=NUM_EPOCHS):
+optimizer = optim.Adam([
+                {'params': end.parameters()},
+                {'params': de.parameters()}
+            ], lr=LEARNING_RATE)
+
+def train(end, de, data_loaders, data_lengths, NUM_EPOCHS=NUM_EPOCHS, size_loader=size_loader, stru_loader=stru_loader):
     train_loss = []
+    val_loss = []
     for epoch in range(NUM_EPOCHS):
-        running_loss = 0.0
-        for iter, data in enumerate(trainloader):
-            print(data.size())
-            print(iter)
-            img = data
-            img = img.to(device)
-            img = img.view(img.size(0), -1)
-            print(img.size())
-            optimizer_end.zero_grad()
-            #optimizer_de.zero_grad()
-            outputs = end(img)
-            dimi = outputs
-            outputs = de(outputs)
-            loss = criterion(outputs, img)
-            loss.backward()
-            optimizer_end.step()
-            #optimizer_de.step()
+        for phase in ['train', 'val']:
+            if phase == 'train':
+                end.train(True)  # Set model to training mode
+                de.train(True)
+            else:
+                end.train(False)  # Set model to evaluate mode
+                de.train(False)
+            running_loss = 0.0
+            for data in data_loaders[phase]:
+                img = data
+                img = img.to(device)
+                optimizer.zero_grad()
+                outputs = end(img)
+                dimi = outputs
+                outputs = de(outputs)
+                loss = criterion(outputs, img)
+                if phase == 'train':
+                    loss.backward()
+                    optimizer.step()
+                running_loss += loss.item()
+            for size in size_loader:
+                size = np.array(size)
+            for stru in stru_loader:
+                stru = np.array(stru)
             running_loss += loss.item()
+            epoch_loss = running_loss / data_lengths[phase]
+            if phase == 'train':
+                train_loss.append(epoch_loss)
+            if phase == 'val':
+                val_loss.append(epoch_loss)
+            print('Epoch {} of {}, Train Loss: {:.3f}'.format(
+                epoch + 1, NUM_EPOCHS, epoch_loss))
+            if phase == 'train':
+                if epoch % 5 == 0:
+                    save_dimi(dimi.cpu().data, epoch, size, stru)
+    return train_loss, val_loss, outputs
 
-        loss = running_loss / len(trainloader)
-        train_loss.append(loss)
-        print('Epoch {} of {}, Train Loss: {:.3f}'.format(
-            epoch + 1, NUM_EPOCHS, loss))
-        if epoch % 5 == 0:
-            save_dimi(dimi.cpu().data, epoch)
-    return train_loss, dimi, outputs
 
-
-def test_image_reconstruction(net, testloader):
+def test_image_reconstruction(end, de, testloader):
     for batch in testloader:
-        img, _ = batch
+        img = batch
         img = img.to(device)
-        img = img.view(img.size(0), -1)
-        outputs = net(img)
-        outputs = outputs[0]
-        outputs = outputs.view(outputs.size(0), 1, 28, 28).cpu().data
+        outputs = end(img)
+        dimi = outputs
+        outputs = de(outputs)
+        plt.figure()
+        plt.plot(outputs)
+        plt.savefig("./" + test_path + '/sammelig.png')
         save_image(outputs, 'fashionmnist_reconstruction.png')
         break
 
@@ -198,10 +293,12 @@ end.to(device)
 de.to(device)
 make_dir()
 # train the network
-train_loss = train(end, de, trainloader, NUM_EPOCHS)
+train_loss = train(end, de, data_loaders, data_lengths, NUM_EPOCHS, size_loader, stru_loader)
 plt.figure()
-plt.plot(train_loss[0])
-plt.title('Train Loss')
+plt.plot(train_loss[0], label='train_loss')
+plt.plot(train_loss[1], label='val_loss')
+plt.legend()
+plt.title('Train/val Loss')
 plt.xlabel('Epochs')
 plt.ylabel('Loss')
 plt.savefig("./" + new_path +'/deep_ae_loss.png')

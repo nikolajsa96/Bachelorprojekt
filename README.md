@@ -10,3 +10,7 @@ Autoencoder:
  The Bible for Torch nn:
  
  https://pytorch.org/docs/stable/nn.html
+ 
+ How to val:
+ 
+ https://stackoverflow.com/questions/50207001/pytorch-add-validation-error-in-training

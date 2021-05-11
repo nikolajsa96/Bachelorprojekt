@@ -21,6 +21,7 @@ from ase.data import covalent_radii, atomic_numbers, chemical_symbols
 import matplotlib.cm as cm
 from sklearn.manifold import TSNE
 import umap
+from torchsample.callbacks import EarlyStopping
 
 os.makedirs('/home/nikolaj/Desktop/Bachelorprojekt/pdf_normsammen/train', exist_ok=True)
 os.makedirs('/home/nikolaj/Desktop/Bachelorprojekt/pdf_normsammen/test', exist_ok=True)
@@ -185,12 +186,12 @@ class encoder(nn.Module):
         self.enc6 = nn.Linear(in_features=10, out_features=5)
         self.enc7 = nn.Linear(in_features=5, out_features=2)
     def forward(self, x):
-        x = (self.enc1(x))
-        x = (self.enc2(x))
-        x = (self.enc3(x))
-        x = (self.enc4(x))
+        x = F.relu(self.enc1(x))
+        x = F.relu(self.enc2(x))
+        x = F.relu(self.enc3(x))
+        x = F.relu(self.enc4(x))
         x = F.relu(self.enc5(x))
-        x = (self.enc6(x))
+        x = F.relu(self.enc6(x))
         x = (self.enc7(x))
         return x
 
@@ -209,11 +210,11 @@ class decoder(nn.Module):
 
     def forward(self, x):
         x = F.relu(self.dec1(x))
-        x = (self.dec2(x))
-        x = (self.dec3(x))
-        x = (self.dec4(x))
-        x = (self.dec5(x))
-        x = (self.dec6(x))
+        x = F.relu(self.dec2(x))
+        x = F.relu(self.dec3(x))
+        x = F.relu(self.dec4(x))
+        x = F.relu(self.dec5(x))
+        x = F.relu(self.dec6(x))
         x = torch.sigmoid(self.dec7(x))
         x = (self.dec8(x))
         return x

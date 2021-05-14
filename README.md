@@ -22,3 +22,5 @@ https://medium.com/analytics-vidhya/early-stopping-with-pytorch-to-restrain-your
 https://www.kaggle.com/akhileshrai/tutorial-early-stopping-vanilla-rnn-pytorch
 
 https://pytorch.org/ignite/master/generated/ignite.handlers.early_stopping.EarlyStopping.html
+
+This one: https://github.com/Bjarten/early-stopping-pytorch/blob/master/MNIST_Early_Stopping_example.ipynb

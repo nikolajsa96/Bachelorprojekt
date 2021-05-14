@@ -14,3 +14,11 @@ Autoencoder:
  How to val:
  
  https://stackoverflow.com/questions/50207001/pytorch-add-validation-error-in-training
+
+Early Stopping:
+
+https://medium.com/analytics-vidhya/early-stopping-with-pytorch-to-restrain-your-model-from-overfitting-dce6de4081c5
+
+https://www.kaggle.com/akhileshrai/tutorial-early-stopping-vanilla-rnn-pytorch
+
+https://pytorch.org/ignite/master/generated/ignite.handlers.early_stopping.EarlyStopping.html

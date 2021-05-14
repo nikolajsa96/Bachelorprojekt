@@ -21,7 +21,7 @@ from ase.data import covalent_radii, atomic_numbers, chemical_symbols
 import matplotlib.cm as cm
 from sklearn.manifold import TSNE
 import umap
-from torchsample.callbacks import EarlyStopping
+import scipy.stats
 
 os.makedirs('/home/nikolaj/Desktop/Bachelorprojekt/pdf_normsammen/train', exist_ok=True)
 os.makedirs('/home/nikolaj/Desktop/Bachelorprojekt/pdf_normsammen/test', exist_ok=True)
@@ -46,16 +46,16 @@ test_dataset = data[1].float()
 val_dataset = data[2].float()
 
 size_train = size.iloc(axis=0)[:train_size]
-size_test = size.iloc(axis=0)[test_size:]
-size_val = size.iloc(axis=0)[val_size:]
+size_test = size_train.iloc(axis=0)[:test_size]
+size_val = size_test.iloc(axis=0)[:val_size]
 
 stru_train = stru.iloc(axis=0)[:train_size]
-stru_test = stru.iloc(axis=0)[test_size:]
-stru_val = stru.iloc(axis=0)[val_size:]
+stru_test = stru_train.iloc(axis=0)[:test_size]
+stru_val = stru_test.iloc(axis=0)[:val_size]
 
 #print(len(train_dataset))size_spilt
 # constants
-NUM_EPOCHS = 151
+NUM_EPOCHS = 1221
 LEARNING_RATE = 1e-3
 BATCH_SIZE = 242
 
@@ -84,7 +84,7 @@ trainloader = DataLoader(
 #print(len(trainloader.dataset))
 testloader = DataLoader(
     testset,
-    batch_size=BATCH_SIZE,
+    batch_size=test_size,
     shuffle=False
 )
 
@@ -93,6 +93,7 @@ valloader = DataLoader(
     batch_size=BATCH_SIZE,
     shuffle=False
 )
+
 
 data_loaders = {"train": trainloader, "val": valloader}
 data_lengths = {"train": len(trainloader.dataset), "val": len(valloader.dataset)}
@@ -171,7 +172,49 @@ def save_dimi(dimi, epoch, size, stru):
 
     annot.set_visible(False)
     fig.canvas.mpl_connect("motion_notify_event", hover)
-    plt.savefig("./" + new_path + '/nice_plot{}.png'.format(epoch), dpi=600)
+    plt.savefig("./" + new_path + '/nice_plot_{}.png'.format(epoch), dpi=200)
+
+
+def save_dimi_test(dimi, size, stru):
+    dimi = dimi.cpu().detach().numpy()
+    norm = plt.Normalize(1, 4)
+    c = np.array(size) / 100
+    names = stru
+
+    # for i in range(len(stru)):
+    # names.append(stru[i][:stru[i].find("_")] + "-" + str(
+    # int(stru.tolist()[i])))
+
+    cmap = plt.cm.viridis
+    cmaplist = [cmap(i) for i in range(cmap.N)]
+    cmap = mpl.colors.LinearSegmentedColormap.from_list("Custom cmap", cmaplist, cmap.N)
+    fig, ax = plt.subplots(figsize=(5, 8))
+    sc = ax.scatter(dimi[:, 0], dimi[:, 1], c=c, cmap=cmap, s=80)
+    plt.title("Latent Space for test")
+    plt.xlabel("Latent Space Variable 1")
+    plt.ylabel("Latent Space Variable 2")
+    plt.yticks([])
+    plt.xticks([])
+    right_side = ax.spines["right"]
+    right_side.set_visible(False)
+    top = ax.spines["top"]
+    top.set_visible(False)
+    # plt.legend()
+    plt.tight_layout()
+
+    annot = ax.annotate("", xy=(0, 0), xytext=(20, 20), textcoords="offset points",
+                        bbox=dict(boxstyle="round", fc="w"),
+                        arrowprops=dict(arrowstyle="->"))
+    # loop through each x,y pair
+    for iter, (i, j) in enumerate(zip(dimi[:, 0], dimi[:, 1])):
+        ax.annotate(stru[iter][:3], xy=(i, j), color='black',
+                    fontsize="x-small", weight='heavy',
+                    horizontalalignment='center',
+                    verticalalignment='center')
+
+    annot.set_visible(False)
+    fig.canvas.mpl_connect("motion_notify_event", hover)
+    plt.savefig("./" + test_path + '/nice_plot_test.png', dpi=600)
 
 #encoder
 class encoder(nn.Module):
@@ -191,7 +234,7 @@ class encoder(nn.Module):
         x = F.relu(self.enc3(x))
         x = F.relu(self.enc4(x))
         x = F.relu(self.enc5(x))
-        x = F.relu(self.enc6(x))
+        x = torch.sigmoid(self.enc6(x))
         x = (self.enc7(x))
         return x
 
@@ -267,23 +310,24 @@ def train(end, de, data_loaders, data_lengths, NUM_EPOCHS=NUM_EPOCHS, size_loade
             print('Epoch {} of {}, Train Loss: {:.3f}'.format(
                 epoch + 1, NUM_EPOCHS, epoch_loss))
             if phase == 'train':
-                if epoch % 5 == 0:
+                if epoch % 20 == 0:
                     save_dimi(dimi.cpu().data, epoch, size, stru)
     return train_loss, val_loss, outputs
 
 
-def test_image_reconstruction(end, de, testloader):
-    for batch in testloader:
+def test_PDF_reconstruction(end, de, testloader, size_test, stru_test):
+    for inte, batch in enumerate(testloader):
         img = batch
         img = img.to(device)
         outputs = end(img)
         dimi = outputs
         outputs = de(outputs)
-        plt.figure()
-        plt.plot(outputs)
-        plt.savefig("./" + test_path + '/sammelig.png')
-        save_image(outputs, 'fashionmnist_reconstruction.png')
         break
+    size = np.array(size_test)
+    stru = np.array(stru_test)
+    #print(len(size_test))
+    save_dimi_test(dimi.cpu().data, size, stru)
+    return outputs
 
 # get the computation device
 device = get_device()
@@ -307,11 +351,38 @@ plt.savefig("./" + new_path +'/deep_ae_loss.png')
 #test_image_reconstruction(de, testloader)
 #print(train_loss[1])
 
-print(len(train_loss[2]))
+#print(len(train_loss[2]))
+#print(train_loss[2])
+for i in range(5):
+    pre_indcode = train_loss[2]
+    pre_ind = pre_indcode.data
+    plt.figure()
+    plt.plot(trainset[i], label='original PDF')
+    plt.plot(pre_ind[i], label='Decoded PDF')
+    a = scipy.stats.pearsonr(trainset[i], pre_ind[i])[0]
+    plt.plot([], [], ' ', label="Pearson correlation")
+    plt.plot([], [], ' ', label="{:.4f}".format(a))
+    plt.xlabel('r [$\AA$]')
+    plt.ylabel('G(r)')
+    plt.legend()
+    plt.savefig("./" + new_path + '/sammelig_{}.png'.format(i))
 print(train_loss[2])
-pre_indcode = train_loss[2]
-pre_ind = pre_indcode.data
-plt.figure()
-plt.plot(testset[0])
-plt.plot(pre_ind[0])
-plt.savefig("./" + new_path +'/sammelig.png')
+test_PDF_recon = test_PDF_reconstruction(end, de, testloader, size_test, stru_test)
+for i in range(5):
+    pre_indcode = test_PDF_recon[i]
+    pre_ind = pre_indcode.data
+    plt.figure()
+    plt.plot(testset[i], label='original PDF')
+    plt.plot(pre_ind,label='Decoded PDF')
+    a = scipy.stats.pearsonr(testset[i], pre_ind)[0]
+    plt.plot([], [], ' ', label="Pearson correlation")
+    plt.plot([], [], ' ', label="{:.4f}".format(a))
+    plt.xlabel('r [$\AA$]')
+    plt.ylabel('G(r)')
+    plt.legend()
+    plt.savefig("./" + test_path +'/sammelig_{}.png'.format(i))
+
+print(test_PDF_recon)
+
+
+

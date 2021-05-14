@@ -28,34 +28,67 @@ os.makedirs('/home/nikolaj/Desktop/Bachelorprojekt/pdf_normsammen/test', exist_o
 new_path = 'pdf_normsammen/train'
 test_path = 'pdf_normsammen/test'
 data_PDF = pd.read_csv("/home/nikolaj/Desktop/Bachelorprojekt/pdf_normsammen/all.csv")
-data_PDF = data_PDF.sample(frac=1).reset_index(drop=True)
-size = data_PDF["size"]
-stru = data_PDF["stru"]
-data_PDF = data_PDF.drop(['stru'], axis=1)
-data_PDF = data_PDF.drop(['size'], axis=1)
-torch_tensor = torch.tensor(data_PDF.values)
-DATASET_SIZE = torch_tensor.size(0)
+data_PDF = data_PDF.sample(frac=1).reset_index(drop=True) #randomzie data
+stru_individuelt = dict()
+train_individuelt = dict()
+test_individuelt = dict()
+val_individuelt = dict()
 
-train_size = int(0.8 * DATASET_SIZE)
-val_size = int(0.1*DATASET_SIZE)
-test_size = int(0.1*DATASET_SIZE)
+for k, v in data_PDF.groupby('stru'):
+    stru_individuelt[k] = v
+stru_names = data_PDF['stru'].unique().tolist()
+train_all = []
+test_all = []
+val_all = []
+for i in stru_names: #makes a train, test and val dataframe for all individuelt structures
+    data_PDF = stru_individuelt[i]
+    train_spilt = int(.8 * len(data_PDF))  # 80%
+    test_val_spilt = int(.9 * len(data_PDF))  # 10% for both
+    train, validate, test = np.split(data_PDF.sample(frac=1), [train_spilt, test_val_spilt])
+    train_all.append(train) #makes a list with dataframes with all individuelt structures
+    test_all.append(test)
+    val_all.append(validate)
 
-data = torch.split(torch_tensor, [train_size, test_size, val_size])
-train_dataset = data[0].float()
-test_dataset = data[1].float()
-val_dataset = data[2].float()
+train_merged = pd.concat(train_all)
+train_merged = train_merged.sample(frac=1).reset_index(drop=True) #dataframes now merged and randomized
+test_merged = pd.concat(test_all)
+test_merged = test_merged.sample(frac=1).reset_index(drop=True)
+val_merged = pd.concat(val_all)
+val_merged = val_merged.sample(frac=1).reset_index(drop=True)
 
-size_train = size.iloc(axis=0)[:train_size]
-size_test = size_train.iloc(axis=0)[:test_size]
-size_val = size_test.iloc(axis=0)[:val_size]
+#dict so right dataframe can be taking - xxx_individuelt[stur]
+for k, v in train_merged.groupby('stru'):
+    train_individuelt[k] = v
+for k, v in test_merged.groupby('stru'):
+    test_individuelt[k] = v
+for k, v in val_merged.groupby('stru'):
+    val_individuelt[k] = v
 
-stru_train = stru.iloc(axis=0)[:train_size]
-stru_test = stru_train.iloc(axis=0)[:test_size]
-stru_val = stru_test.iloc(axis=0)[:val_size]
+size_train = train_merged["size"]
+stru_train = train_merged["stru"]
+size_test = test_merged["size"]
+stru_test = test_merged["stru"]
+size_val = val_merged["size"]
+stru_val = val_merged["stru"]
+
+train_merged = train_merged.drop(['stru'], axis=1)
+train_merged = train_merged.drop(['size'], axis=1)
+test_merged = test_merged.drop(['stru'], axis=1)
+test_merged = test_merged.drop(['size'], axis=1)
+val_merged = val_merged.drop(['stru'], axis=1)
+val_merged = val_merged.drop(['size'], axis=1)
+
+torch_tensor_train = torch.tensor(train_merged.values)
+torch_tensor_test = torch.tensor(test_merged.values)
+torch_tensor_val = torch.tensor(val_merged.values)
+
+train_dataset = torch_tensor_train.float()
+test_dataset = torch_tensor_test.float()
+val_dataset = torch_tensor_val.float()
 
 #print(len(train_dataset))size_spilt
 # constants
-NUM_EPOCHS = 1221
+NUM_EPOCHS = 21
 LEARNING_RATE = 1e-3
 BATCH_SIZE = 242
 
@@ -71,25 +104,22 @@ stru_loader = DataLoader(
     shuffle=False
 )
 
-trainset = train_dataset
-testset = test_dataset
-valset = val_dataset
 
 trainloader = DataLoader(
-    trainset,
+    train_dataset,
     batch_size=BATCH_SIZE,
     shuffle=False
 )
 
 #print(len(trainloader.dataset))
 testloader = DataLoader(
-    testset,
-    batch_size=test_size,
+    test_dataset,
+    batch_size=len(test_merged),
     shuffle=False
 )
 
 valloader = DataLoader(
-    valset,
+    val_dataset,
     batch_size=BATCH_SIZE,
     shuffle=False
 )
@@ -214,8 +244,50 @@ def save_dimi_test(dimi, size, stru):
 
     annot.set_visible(False)
     fig.canvas.mpl_connect("motion_notify_event", hover)
-    plt.savefig("./" + test_path + '/nice_plot_test.png', dpi=600)
+    plt.savefig("./" + test_path + '/nice_plot_test.png', dpi=200)
 
+def save_dimi_test_indi(dimi, size, stru, stru_indi):
+    dimi = dimi.cpu().detach().numpy()
+    norm = plt.Normalize(1, 4)
+    c = np.array(size) / 100
+    names = stru
+
+    # for i in range(len(stru)):
+    # names.append(stru[i][:stru[i].find("_")] + "-" + str(
+    # int(stru.tolist()[i])))
+
+    cmap = plt.cm.viridis
+    cmaplist = [cmap(i) for i in range(cmap.N)]
+    cmap = mpl.colors.LinearSegmentedColormap.from_list("Custom cmap", cmaplist, cmap.N)
+    fig, ax = plt.subplots(figsize=(5, 8))
+    sc = ax.scatter(dimi[:, 0], dimi[:, 1], c=c, cmap=cmap, s=80)
+    plt.title("Latent Space for test_{}".format(stru_indi))
+    plt.xlabel("Latent Space Variable 1")
+    plt.ylabel("Latent Space Variable 2")
+    plt.yticks([])
+    plt.xticks([])
+    right_side = ax.spines["right"]
+    right_side.set_visible(False)
+    top = ax.spines["top"]
+    top.set_visible(False)
+    # plt.legend()
+    plt.tight_layout()
+
+    annot = ax.annotate("", xy=(0, 0), xytext=(20, 20), textcoords="offset points",
+                        bbox=dict(boxstyle="round", fc="w"),
+                        arrowprops=dict(arrowstyle="->"))
+    # loop through each x,y pair
+    for iter, (i, j) in enumerate(zip(dimi[:, 0], dimi[:, 1])):
+        ax.annotate(stru[iter][:3], xy=(i, j), color='black',
+                    fontsize="x-small", weight='heavy',
+                    horizontalalignment='center',
+                    verticalalignment='center')
+
+    annot.set_visible(False)
+    fig.canvas.mpl_connect("motion_notify_event", hover)
+    os.makedirs('/home/nikolaj/Desktop/Bachelorprojekt/pdf_normsammen/test/indi', exist_ok=True)
+    test_path_indi = 'home/nikolaj/Desktop/Bachelorprojekt/pdf_normsammen/test/indi'
+    plt.savefig("/" + test_path_indi + '/test_indi_{}.png'.format(stru_indi), dpi=200)
 #encoder
 class encoder(nn.Module):
     def __init__(self):
@@ -309,11 +381,21 @@ def train(end, de, data_loaders, data_lengths, NUM_EPOCHS=NUM_EPOCHS, size_loade
                 val_loss.append(epoch_loss)
             print('Epoch {} of {}, Train Loss: {:.3f}'.format(
                 epoch + 1, NUM_EPOCHS, epoch_loss))
-            if phase == 'train':
-                if epoch % 20 == 0:
-                    save_dimi(dimi.cpu().data, epoch, size, stru)
     return train_loss, val_loss, outputs
 
+def test_PDF_reconstruction_indi(end, de, testloader, size_test, stru_test, stru_indi):
+    for inte, batch in enumerate(testloader):
+        img = batch
+        img = img.to(device)
+        outputs = end(img)
+        dimi = outputs
+        outputs = de(outputs)
+        break
+    size = np.array(size_test)
+    stru = np.array(stru_test)
+    #print(len(size_test))
+    save_dimi_test_indi(dimi.cpu().data, size, stru, stru_indi)
+    return outputs
 
 def test_PDF_reconstruction(end, de, testloader, size_test, stru_test):
     for inte, batch in enumerate(testloader):
@@ -357,24 +439,24 @@ for i in range(5):
     pre_indcode = train_loss[2]
     pre_ind = pre_indcode.data
     plt.figure()
-    plt.plot(trainset[i], label='original PDF')
+    plt.plot(train_dataset[i], label='original PDF')
     plt.plot(pre_ind[i], label='Decoded PDF')
-    a = scipy.stats.pearsonr(trainset[i], pre_ind[i])[0]
+    a = scipy.stats.pearsonr(train_dataset[i], pre_ind[i])[0]
     plt.plot([], [], ' ', label="Pearson correlation")
     plt.plot([], [], ' ', label="{:.4f}".format(a))
     plt.xlabel('r [$\AA$]')
     plt.ylabel('G(r)')
     plt.legend()
     plt.savefig("./" + new_path + '/sammelig_{}.png'.format(i))
-print(train_loss[2])
+#print(train_loss[2])
 test_PDF_recon = test_PDF_reconstruction(end, de, testloader, size_test, stru_test)
 for i in range(5):
     pre_indcode = test_PDF_recon[i]
     pre_ind = pre_indcode.data
     plt.figure()
-    plt.plot(testset[i], label='original PDF')
+    plt.plot(test_dataset[i], label='original PDF')
     plt.plot(pre_ind,label='Decoded PDF')
-    a = scipy.stats.pearsonr(testset[i], pre_ind)[0]
+    a = scipy.stats.pearsonr(test_dataset[i], pre_ind)[0]
     plt.plot([], [], ' ', label="Pearson correlation")
     plt.plot([], [], ' ', label="{:.4f}".format(a))
     plt.xlabel('r [$\AA$]')
@@ -382,7 +464,36 @@ for i in range(5):
     plt.legend()
     plt.savefig("./" + test_path +'/sammelig_{}.png'.format(i))
 
-print(test_PDF_recon)
+#print(test_PDF_recon)
+
+for indi_stru in stru_names:
+    test_indi_stru = test_individuelt[indi_stru]
+    size_indi_stru = test_indi_stru["size"]
+    stru_indi_stru = test_indi_stru["stru"]
+    test_indi_stru = test_indi_stru.drop(['stru'], axis=1)
+    test_indi_stru = test_indi_stru.drop(['size'], axis=1)
+    test_indi_stru = torch.tensor(test_indi_stru.values)
+    test_indi_stru = test_indi_stru.float()
+    testloader_indi_stru = DataLoader(
+        test_indi_stru,
+        batch_size=len(test_indi_stru),
+        shuffle=False
+    )
+    test_PDF_reconstruction_indi(end, de, testloader_indi_stru, size_indi_stru, stru_indi_stru, indi_stru)
+    pre_indcode = test_PDF_recon[0]
+    pre_ind = pre_indcode.data
+    plt.figure()
+    plt.plot(test_indi_stru[0], label='original PDF')
+    plt.plot(pre_ind, label='Decoded PDF')
+    a = scipy.stats.pearsonr(test_indi_stru[0], pre_ind)[0]
+    plt.plot([], [], ' ', label="Pearson correlation")
+    plt.plot([], [], ' ', label="{:.4f}".format(a))
+    plt.title("Latent Space for test_{}".format(indi_stru))
+    plt.xlabel('r [$\AA$]')
+    plt.ylabel('G(r)')
+    plt.legend()
+    plt.savefig("./" + test_path + '/sammelig_{}.png'.format(indi_stru))
+
 
 
 

@@ -81,37 +81,33 @@ class PDF_generator:
                                                 self.rmax, self.rstep, self.biso, self.delta2)
 stru_true_list = []
 size_list = []
+os.makedirs('/home/nikolaj/Desktop/Bachelorprojekt/xyz_db_raw_atoms_200_interpolate_001/all_PDF/',exist_ok=True)
 stru_maker_list = ["FCC", "BCC", "SC", "HCP", "Icosahedron", "Decahedron", "Octahedron"]
-for i in stru_maker_list:
-    dir = '/home/nikolaj/Desktop/Bachelorprojekt/strus/' + i + '/PDF/'
-    if os.path.exists(dir):
-        shutil.rmtree(dir)
-    os.makedirs(dir)
-    path_tmp_xyz = os.listdir('/home/nikolaj/Desktop/Bachelorprojekt/strus/' + i + '/xyz/')
-    path_xyz = '/home/nikolaj/Desktop/Bachelorprojekt/strus/' + i + '/xyz/' # Cluster file
+path_tmp_xyz = os.listdir('/home/nikolaj/Desktop/Bachelorprojekt/xyz_db_raw_atoms_200_interpolate_001/all')
+path_xyz = '/home/nikolaj/Desktop/Bachelorprojekt/xyz_db_raw_atoms_200_interpolate_001/all/' # Cluster file
 
-    pbar = tqdm(total=len(path_tmp_xyz))
+pbar = tqdm(total=len(path_tmp_xyz))
 
-    for filename in path_tmp_xyz:
-        with open(path_xyz + filename) as f:
-            first_line = int(f.readline())
-        if __name__ == '__main__':
-            PDF_obj = PDF_generator()  # Init class object
-            # Using cluster files
-            xyz_path =str(path_xyz) + filename
-            xgrid, xyz_pdf = PDF_obj.genPDF(xyz_path, fmt='xyz')
-            PDF_xyz = pd.DataFrame([xgrid, xyz_pdf])
-            PDF_xyz = PDF_xyz.T
-            new_path = (r'/home/nikolaj/Desktop/Bachelorprojekt/strus/' + i + '/PDF/'+'PDF_' + filename)
-            new_path = new_path.replace('.xyz', '.cvs')
-            PDF_xyz.to_csv(new_path, index=False)
-            base = os.path.basename(filename)
-            txt = os.path.splitext(base)[0]
-            x = txt.split("_")
-            stru_true_list.append(x[0])
-            size_list.append((first_line))
-        pbar.update(1)
-    pbar.close()
+for filename in path_tmp_xyz:
+    with open(path_xyz + filename) as f:
+        first_line = int(f.readline())
+    if __name__ == '__main__':
+        PDF_obj = PDF_generator()  # Init class object
+        # Using cluster files
+        xyz_path =str(path_xyz) + filename
+        xgrid, xyz_pdf = PDF_obj.genPDF(xyz_path, fmt='xyz')
+        PDF_xyz = pd.DataFrame([xgrid, xyz_pdf])
+        PDF_xyz = PDF_xyz.T
+        new_path = (r'/home/nikolaj/Desktop/Bachelorprojekt/xyz_db_raw_atoms_200_interpolate_001/all_PDF/'+'PDF_' + filename)
+        new_path = new_path.replace('.xyz', '.cvs')
+        PDF_xyz.to_csv(new_path, index=False)
+        base = os.path.basename(filename)
+        txt = os.path.splitext(base)[0]
+        x = txt.split("_")
+        stru_true_list.append(x[0])
+        size_list.append((first_line))
+    pbar.update(1)
+pbar.close()
 np.savetxt("stru_true_list.txt", stru_true_list, fmt='%.3s', delimiter=',')
 np.savetxt("size_list.txt", size_list, delimiter=',')
 """

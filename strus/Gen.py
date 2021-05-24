@@ -408,7 +408,7 @@ for i in stru_maker_list:
 	os.makedirs("/home/nikolaj/Desktop/Bachelorprojekt/strus/" + i + "/xyz/", exist_ok=True)
 	data_dir = "/home/nikolaj/Desktop/Bachelorprojekt/strus/" + i + "/tmp/"
 	data_dir_unique = "/home/nikolaj/Desktop/Bachelorprojekt/strus/" + i + "/xyz/"
-	make_data(data_dir, 100, i, minimum_atoms=5, numberOfBondLengths=1)
+	make_data(data_dir, 200, i, minimum_atoms=5, numberOfBondLengths=1)
 
 	remove_same_structures(path=data_dir, savePath=data_dir_unique)
 

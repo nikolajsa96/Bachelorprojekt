@@ -7,6 +7,10 @@ Autoencoder:
  
  https://blog.keras.io/building-autoencoders-in-keras.html
  
+ Teori om autoencoder:
+ 
+ https://www.jeremyjordan.me/autoencoders/
+ 
  The Bible for Torch nn:
  
  https://pytorch.org/docs/stable/nn.html

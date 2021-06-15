@@ -22,6 +22,7 @@ from scipy.spatial import ConvexHull
 import shutil
 import mendeleev
 import scipy.stats
+from mendeleev import element
 
 class Net(nn.Module):
     def __init__(self):
@@ -222,23 +223,23 @@ stru_names = data_PDF['stru'].unique().tolist()
 person_values = pd.DataFrame(columns=stru_names)
 
 for indi_stru in stru_names:
-    test_indi_stru = test_individuelt[indi_stru]
-    size_indi_stru = test_indi_stru["size"]
-    stru_indi_stru = test_indi_stru["stru"]
-    atom_indi_stru = test_indi_stru["atom"]
-    first_peak_indi_stru = test_indi_stru["first_peak"]
-    test_indi_stru = test_indi_stru.drop(['stru'], axis=1)
-    test_indi_stru = test_indi_stru.drop(['size'], axis=1)
-    test_indi_stru = test_indi_stru.drop(['atom'], axis=1)
-    test_indi_stru = test_indi_stru.drop(['first_peak'], axis=1)
-    test_indi_stru = torch.tensor(test_indi_stru.values)
-    test_indi_stru = test_indi_stru.float()
-    testloader_indi_stru = DataLoader(
-        test_indi_stru,
-        batch_size=len(test_indi_stru),
+    train_indi_stru = train_individuelt[indi_stru]
+    size_indi_stru = train_indi_stru["size"]
+    stru_indi_stru = train_indi_stru["stru"]
+    atom_indi_stru = train_indi_stru["atom"]
+    first_peak_indi_stru = train_indi_stru["first_peak"]
+    train_indi_stru = train_indi_stru.drop(['stru'], axis=1)
+    train_indi_stru = train_indi_stru.drop(['size'], axis=1)
+    train_indi_stru = train_indi_stru.drop(['atom'], axis=1)
+    train_indi_stru = train_indi_stru.drop(['first_peak'], axis=1)
+    train_indi_stru = torch.tensor(train_indi_stru.values)
+    train_indi_stru = train_indi_stru.float()
+    trainloader_indi_stru = DataLoader(
+        train_indi_stru,
+        batch_size=len(train_indi_stru),
         shuffle=False
     )
-    output, dimi, size, stru, data = test_PDF_reconstruction(model, testloader_indi_stru, size_indi_stru, stru_indi_stru)
+    output, dimi, size, stru, data = test_PDF_reconstruction(model, trainloader_indi_stru, size_indi_stru, stru_indi_stru)
     output = output.data
     dimi = np.array(dimi.data)
     dimi_df = pd.DataFrame(dimi, columns=['Latent_Space_Variable_1','Latent_Space_Variable_2'])
@@ -250,18 +251,36 @@ for indi_stru in stru_names:
         pearsonr_values_indi = pearsonr_values_indi.append([person])
 
     person_values = person_values.append(pearsonr_values_indi)
-    test_individuelt[indi_stru].reset_index(drop=True, inplace=True)
+    train_individuelt[indi_stru].reset_index(drop=True, inplace=True)
     pearsonr_values_indi.reset_index(drop=True, inplace=True)
-    test_individuelt[indi_stru] = pd.concat([test_individuelt[indi_stru], pearsonr_values_indi], axis=1, join='inner')
-    test_individuelt[indi_stru].rename(columns={str(indi_stru): 'pearsonr'}, inplace=True)
-    test_individuelt[indi_stru] = pd.concat([test_individuelt[indi_stru], dimi_df], axis=1, join='inner')
-
-
+    train_individuelt[indi_stru] = pd.concat([train_individuelt[indi_stru], pearsonr_values_indi], axis=1, join='inner')
+    train_individuelt[indi_stru].rename(columns={str(indi_stru): 'pearsonr'}, inplace=True)
+    train_individuelt[indi_stru] = pd.concat([train_individuelt[indi_stru], dimi_df], axis=1, join='inner')
+    g = range(len(output[0]))
+    columns_names = []
+    for i in g:
+        recon_r = 'recon_r_{}'.format(i)
+        columns_names.append(recon_r)
+    re_con = pd.DataFrame(output.numpy(), columns=columns_names)
+    train_individuelt[indi_stru] = pd.concat([train_individuelt[indi_stru], re_con], axis=1, join='inner')
 means = person_values.mean(skipna=True)
 min = person_values.min(skipna=True)
 max = person_values.max(skipna=True)
 pearsonr_values_pandas = pd.DataFrame({'Mean': means.values, 'Min': min.values, 'Max': max.values}, index=min.index)
-pearsonr_values_pandas.to_csv('/home/nikolaj/Desktop/Bachelorprojekt/pdf_notsammen/person_values.csv')
+pearsonr_values_pandas.to_csv('/home/nikolaj/Desktop/Bachelorprojekt/pdf_notsammen/person_values_for_train.csv')
+
+train_sammen = pd.concat(train_individuelt)
+
+atoms = train_sammen['atom']
+
+atom_radi_list = []
+for i in range(len(atoms)):
+    atom = element(str(atoms[i]))
+    atom_radi = atom.atomic_radius
+    atom_radi_list.append(atom_radi)
+
+train_sammen['atom_radi'] = atom_radi_list
+train_sammen.to_csv('/home/nikolaj/Desktop/Bachelorprojekt/pdf_notsammen/train_dataframes.csv')
 
 for indi_stru in stru_names:
     test_indi_stru = test_individuelt[indi_stru]

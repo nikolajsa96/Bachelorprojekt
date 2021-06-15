@@ -13,7 +13,6 @@ from torch.utils.data import DataLoader
 from torchvision.utils import save_image
 import pandas as pd
 from sklearn.model_selection import train_test_split
-#import tensorflow as tf
 
 data_PDF = pd.read_csv("/strus/all_PDFs.csv")
 data_PDF = data_PDF.drop(['true'], axis=1)

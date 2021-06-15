@@ -1,7 +1,6 @@
 # import packages
 import os
 import torch
-import torchvision
 import torch.nn as nn
 import torchvision.transforms as transforms
 import torch.optim as optim

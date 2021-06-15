@@ -1,6 +1,5 @@
 # import packages
-import os
-import sys
+import os, sys
 from matplotlib.colors import LinearSegmentedColormap
 import matplotlib as mpl
 import torch
@@ -19,7 +18,6 @@ import torch.optim as optim
 from torch.distributions import Normal, Independent
 from ase.data import covalent_radii, atomic_numbers, chemical_symbols
 import matplotlib.cm as cm
-from sklearn.manifold import TSNE
 import umap
 import scipy.stats
 

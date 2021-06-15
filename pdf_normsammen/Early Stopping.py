@@ -19,7 +19,6 @@ import torch.optim as optim
 from torch.distributions import Normal, Independent
 from ase.data import covalent_radii, atomic_numbers, chemical_symbols
 import matplotlib.cm as cm
-from sklearn.manifold import TSNE
 import shutil
 import scipy.stats
 vej = 'pdf_notsammen'
